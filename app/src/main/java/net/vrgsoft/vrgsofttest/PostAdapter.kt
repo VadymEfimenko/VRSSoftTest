@@ -1,5 +1,7 @@
 package net.vrgsoft.vrgsofttest
 
+import android.content.Intent
+import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,7 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.squareup.picasso.Picasso
 import net.vrgsoft.redditclient.model.RedditPost
 
-class PostAdapter(private val postList: List<RedditPost>) :
+class PostAdapter(private val postList: MutableList<RedditPost>) :
     RecyclerView.Adapter<PostAdapter.PostViewHolder>() {
 
     class PostViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -25,6 +27,16 @@ class PostAdapter(private val postList: List<RedditPost>) :
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_post, parent, false)
         return PostViewHolder(view)
+    }
+
+    fun addPosts(newPosts: List<RedditPost>) {
+        postList.addAll(newPosts)
+        notifyDataSetChanged()
+    }
+
+    fun clearPosts() {
+        postList.clear()
+        notifyDataSetChanged()
     }
 
     override fun onBindViewHolder(holder: PostViewHolder, position: Int) {
@@ -45,6 +57,11 @@ class PostAdapter(private val postList: List<RedditPost>) :
 
         if (post.data.thumbnail != null && post.data.thumbnail.isNotEmpty()) {
             Picasso.get().load(post.data.thumbnail).into(holder.thumbnail)
+
+            holder.thumbnail.setOnClickListener {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(post.data.thumbnail))
+                it.context.startActivity(intent)
+            }
         }
     }
 

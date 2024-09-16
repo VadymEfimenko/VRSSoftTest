@@ -1,3 +1,13 @@
 <resources>
     <string name="app_name">VRGSoftTest</string>
+
+    <string-array name="time_periods">
+        <item>hour</item>
+        <item>day</item>
+        <item>week</item>
+        <item>month</item>
+        <item>year</item>
+        <item>all</item>
+    </string-array>
+
 </resources>

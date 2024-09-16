@@ -11,6 +11,9 @@ interface RedditApi {
     @GET("/top.json")
     fun getTopPosts(
         @Query("t") timePeriod: String,
-        @Query("limit") limit: Int
+        @Query("limit") limit: Int,
+        @Query("after") after: String? = null
     ): Call<RedditResponse>
+
+
 }
