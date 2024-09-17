@@ -40,8 +40,6 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
-        setupSpinner()
-
         recyclerView = findViewById(R.id.recyclerView)
         recyclerView.layoutManager = LinearLayoutManager(this)
 
@@ -50,7 +48,7 @@ class MainActivity : AppCompatActivity() {
 
         redditApi = WebClientBuilder.getClient()
 
-        fetchTopPosts("day", 2)
+        fetchTopPosts("all", 2)
 
         recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
@@ -69,33 +67,6 @@ class MainActivity : AppCompatActivity() {
             }
         })
     }
-
-    private fun setupSpinner() {
-        val timePeriodSpinner: Spinner = findViewById(R.id.timePeriodSpinner)
-
-        ArrayAdapter.createFromResource(
-            this,
-            R.array.time_periods,
-            android.R.layout.simple_spinner_item
-        ).also { adapter ->
-            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-            timePeriodSpinner.adapter = adapter
-        }
-
-        timePeriodSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
-                val selectedTimePeriod = parent.getItemAtPosition(position).toString()
-
-                postAdapter.clearPosts()
-                Log.d("MainActivity", selectedTimePeriod)
-                fetchTopPosts(selectedTimePeriod, 2)
-            }
-
-            override fun onNothingSelected(parent: AdapterView<*>) {
-            }
-        }
-    }
-
 
     private fun fetchTopPosts(timePeriod: String, limit: Int) {
         redditApi.getTopPosts(timePeriod, limit, after).enqueue(object : Callback<RedditResponse> {
@@ -116,7 +87,6 @@ class MainActivity : AppCompatActivity() {
                     Log.e("MainActivity", "Request failed")
                 }
             }
-
             override fun onFailure(call: Call<RedditResponse>, t: Throwable) {
                 Log.e("MainActivity", "Error: ${t.message}")
             }
