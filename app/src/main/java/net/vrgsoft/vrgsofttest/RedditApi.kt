@@ -14,6 +14,4 @@ interface RedditApi {
         @Query("limit") limit: Int,
         @Query("after") after: String? = null
     ): Call<RedditResponse>
-
-
 }

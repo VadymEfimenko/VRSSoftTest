@@ -1,8 +1,10 @@
 package net.vrgsoft.redditclient.model
 
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
+
+@Parcelize
 data class RedditData(
     val after: String?,
-    val dist: Int,
     val children: List<RedditPost>,
-    val before: String?
-)
+) : Parcelable

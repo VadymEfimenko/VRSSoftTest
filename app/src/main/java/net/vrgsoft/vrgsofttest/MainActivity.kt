@@ -1,11 +1,8 @@
 package net.vrgsoft.vrgsofttest
 
 import android.os.Bundle
+import android.os.Parcelable
 import android.util.Log
-import android.view.View
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
-import android.widget.Spinner
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -14,6 +11,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import net.vrgsoft.redditclient.RedditApi
 import net.vrgsoft.redditclient.WebClientBuilder
+import net.vrgsoft.redditclient.model.RedditPost
 import net.vrgsoft.redditclient.model.RedditResponse
 import retrofit2.Call
 import retrofit2.Callback
@@ -29,6 +27,8 @@ class MainActivity : AppCompatActivity() {
 
     private var loading = false
 
+    private var recyclerViewState: Parcelable? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -41,15 +41,44 @@ class MainActivity : AppCompatActivity() {
         }
 
         recyclerView = findViewById(R.id.recyclerView)
-        recyclerView.layoutManager = LinearLayoutManager(this)
-
+        val layoutManager = LinearLayoutManager(this)
+        recyclerView.layoutManager = layoutManager
         postAdapter = PostAdapter(mutableListOf())
         recyclerView.adapter = postAdapter
 
         redditApi = WebClientBuilder.getClient()
+        setupRecyclerViewScrollListener()
 
-        fetchTopPosts("all", 2)
+        if (savedInstanceState == null) {
+            fetchTopPosts("all", 2)
+        }
 
+
+    }
+
+    private fun fetchTopPosts(timePeriod: String, limit: Int) {
+        redditApi.getTopPosts(timePeriod, limit, after).enqueue(object : Callback<RedditResponse> {
+            override fun onResponse(call: Call<RedditResponse>, response: Response<RedditResponse>) {
+                if (response.isSuccessful) {
+                    val redditResponse = response.body()
+                    if (redditResponse != null) {
+                        after = redditResponse.data.after
+
+                        val newPosts = redditResponse.data.children
+                        postAdapter.addPosts(newPosts)
+                        loading = false
+                    }
+                } else {
+                    Log.e("MainActivity", "Request failed")
+                }
+            }
+            override fun onFailure(call: Call<RedditResponse>, t: Throwable) {
+                Log.e("MainActivity", "Error: ${t.message}")
+            }
+        })
+    }
+
+    private fun setupRecyclerViewScrollListener() {
         recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(recyclerView, dx, dy)
@@ -61,35 +90,28 @@ class MainActivity : AppCompatActivity() {
 
                 if (!loading && dy > 0 && (firstVisibleItemPosition + visibleItemCount) >= totalItemCount) {
                     loading = true
-                    fetchTopPosts("day", 2)
-
+                    fetchTopPosts("all", 2)
                 }
             }
         })
     }
 
-    private fun fetchTopPosts(timePeriod: String, limit: Int) {
-        redditApi.getTopPosts(timePeriod, limit, after).enqueue(object : Callback<RedditResponse> {
-            override fun onResponse(call: Call<RedditResponse>, response: Response<RedditResponse>) {
-                if (response.isSuccessful) {
-                    val redditResponse = response.body()
-                    if (redditResponse != null) {
-                        for (post in redditResponse.data.children) {
-                            Log.d("MainActivity", "Title: ${post.data.title}, Comments: ${post.data.num_comments}")
-                        }
-                        after = redditResponse.data.after
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putParcelableArrayList("posts", ArrayList(postAdapter.getPosts()))
+        outState.putString("after", after)
+        recyclerViewState = recyclerView.layoutManager?.onSaveInstanceState()
+        outState.putParcelable("recycler_state", recyclerViewState)
+    }
 
-                        val newPosts = redditResponse.data.children
-                        postAdapter.addPosts(newPosts) // Добавляем посты, а не заменяем
-                        loading = false
-                    }
-                } else {
-                    Log.e("MainActivity", "Request failed")
-                }
-            }
-            override fun onFailure(call: Call<RedditResponse>, t: Throwable) {
-                Log.e("MainActivity", "Error: ${t.message}")
-            }
-        })
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        val savedPosts = savedInstanceState.getParcelableArrayList<RedditPost>("posts")
+        if (savedPosts != null) {
+            postAdapter.setPosts(savedPosts)
+        }
+        after = savedInstanceState.getString("after")
+        recyclerViewState = savedInstanceState.getParcelable<Parcelable>("recycler_state")
+        recyclerView.layoutManager?.onRestoreInstanceState(recyclerViewState)
     }
 }

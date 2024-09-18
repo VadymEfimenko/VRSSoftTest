@@ -8,6 +8,7 @@ import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
+import android.text.Html
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -41,19 +42,24 @@ class PostAdapter(private val postList: MutableList<RedditPost>) :
         notifyDataSetChanged()
     }
 
-    fun clearPosts() {
+    fun setPosts(posts: MutableList<RedditPost>) {
         postList.clear()
+        postList.addAll(posts)
         notifyDataSetChanged()
+    }
+
+    fun getPosts(): MutableList<RedditPost> {
+        return postList
     }
 
     override fun onBindViewHolder(holder: PostViewHolder, position: Int) {
         val post = postList[position]
         holder.title.text = post.data.title
         holder.author.text = "Author: ${post.data.subreddit}"
-        holder.comments.text = "${post.data.num_comments} comments"
+        holder.comments.text = "${post.data.numComments} comments"
 
         val currentTime = System.currentTimeMillis() / 1000
-        val timeDiff = currentTime - post.data.created_utc
+        val timeDiff = currentTime - post.data.createdUtc
         val hoursAgo = timeDiff / 3600
         val minutesAgo = (timeDiff % 3600) / 60
 
@@ -62,23 +68,41 @@ class PostAdapter(private val postList: MutableList<RedditPost>) :
             else -> "$minutesAgo minutes ago"
         }
 
-        val imageUrl = post.data.url
-        if (imageUrl.isNotEmpty()) {
-            Picasso.get().load(imageUrl).into(holder.thumbnail)
+        val thumbnailUrl = Html.fromHtml(post.data.thumbnail).toString()
+        val fullImageUrl = Html.fromHtml(post.data.url).toString()
 
-            holder.thumbnail.setOnClickListener {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(imageUrl))
-                it.context.startActivity(intent)
+        if (isValidThumbnailUrl(thumbnailUrl)) {
+            Picasso.get().load(thumbnailUrl).into(holder.thumbnail)
+            if (!post.data.isVideo) {
+                holder.thumbnail.setOnClickListener {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(fullImageUrl))
+                    it.context.startActivity(intent)
+                }
+                holder.saveButton.visibility = View.VISIBLE
             }
+            holder.saveButton.setOnClickListener {
+                if (isValidThumbnailUrl(thumbnailUrl) && !post.data.isVideo) {
+                    saveImageToGallery(holder.itemView.context, fullImageUrl)
+                } else {
+                    Toast.makeText(holder.itemView.context, "No full image", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            }
+            if (post.data.isVideo) {
+
+                holder.saveButton.visibility = View.GONE
+                holder.saveButton.setOnClickListener(null)
+            }
+        } else {
+            holder.thumbnail.visibility = View.GONE
+            holder.thumbnail.setImageDrawable(null)
+            holder.thumbnail.setOnClickListener(null)
+
+            holder.saveButton.visibility = View.GONE
+            holder.saveButton.setOnClickListener(null)
         }
 
-        holder.saveButton.setOnClickListener {
-            if (imageUrl.isNotEmpty()) {
-                saveImageToGallery(holder.itemView.context, imageUrl)
-            } else {
-                Toast.makeText(holder.itemView.context, "Изображение недоступно", Toast.LENGTH_SHORT).show()
-            }
-        }
+
     }
 
     override fun getItemCount(): Int {
@@ -92,7 +116,7 @@ class PostAdapter(private val postList: MutableList<RedditPost>) :
             }
 
             override fun onBitmapFailed(e: Exception, errorDrawable: Drawable?) {
-                Toast.makeText(context, "Не удалось загрузить изображение", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Failed to load", Toast.LENGTH_SHORT).show()
             }
 
             override fun onPrepareLoad(placeHolderDrawable: Drawable?) {
@@ -120,8 +144,7 @@ class PostAdapter(private val postList: MutableList<RedditPost>) :
                 contentResolver.openOutputStream(uri)?.use { outputStream ->
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
                 }
-
-                Toast.makeText(context, "Image have been saved", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Image has been saved", Toast.LENGTH_SHORT).show()
             } catch (e: IOException) {
                 Toast.makeText(context, "Error", Toast.LENGTH_SHORT).show()
                 e.printStackTrace()
@@ -129,5 +152,12 @@ class PostAdapter(private val postList: MutableList<RedditPost>) :
         } else {
             Toast.makeText(context, "Failed to save", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun isValidThumbnailUrl(url: String?): Boolean {
+        if (url.isNullOrEmpty()) return false
+        val lowerUrl = url.lowercase()
+        return (lowerUrl.startsWith("http://") || lowerUrl.startsWith("https://")) &&
+                (lowerUrl.endsWith(".jpg") || lowerUrl.endsWith(".jpeg") || lowerUrl.endsWith(".png"))
     }
 }
