@@ -1,4 +1,4 @@
-package net.vrgsoft.redditclient
+package net.vrgsoft.vrgsofttest.utils
 
 
 import net.vrgsoft.redditclient.model.RedditResponse

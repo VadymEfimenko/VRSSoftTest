@@ -89,7 +89,6 @@ class PostAdapter(private val postList: MutableList<RedditPost>) :
                 }
             }
             if (post.data.isVideo) {
-
                 holder.saveButton.visibility = View.GONE
                 holder.saveButton.setOnClickListener(null)
             }
@@ -101,8 +100,6 @@ class PostAdapter(private val postList: MutableList<RedditPost>) :
             holder.saveButton.visibility = View.GONE
             holder.saveButton.setOnClickListener(null)
         }
-
-
     }
 
     override fun getItemCount(): Int {
@@ -127,7 +124,7 @@ class PostAdapter(private val postList: MutableList<RedditPost>) :
     private fun saveBitmapToGallery(context: Context, bitmap: Bitmap) {
         val filename = "IMG_${System.currentTimeMillis()}.jpg"
         val mimeType = "image/jpeg"
-        val relativeLocation = Environment.DIRECTORY_DCIM
+        val relativeLocation = Environment.DIRECTORY_PICTURES
 
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, filename)

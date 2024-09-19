@@ -1,32 +1,28 @@
 package net.vrgsoft.vrgsofttest
 
+import net.vrgsoft.vrgsofttest.repository.PostRepository
 import android.os.Bundle
 import android.os.Parcelable
-import android.util.Log
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import net.vrgsoft.redditclient.RedditApi
-import net.vrgsoft.redditclient.WebClientBuilder
+import net.vrgsoft.vrgsofttest.utils.RedditApi
+import net.vrgsoft.vrgsofttest.utils.WebClientBuilder
 import net.vrgsoft.redditclient.model.RedditPost
-import net.vrgsoft.redditclient.model.RedditResponse
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import net.vrgsoft.vrgsofttest.utils.Constants
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var redditApi: RedditApi
     private lateinit var postAdapter: PostAdapter
     private lateinit var recyclerView: RecyclerView
+    private lateinit var postRepository: PostRepository
 
     private var after: String? = null
-
     private var loading = false
-
     private var recyclerViewState: Parcelable? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,35 +43,22 @@ class MainActivity : AppCompatActivity() {
         recyclerView.adapter = postAdapter
 
         redditApi = WebClientBuilder.getClient()
+        postRepository = PostRepository(redditApi)
         setupRecyclerViewScrollListener()
 
         if (savedInstanceState == null) {
-            fetchTopPosts("all", 2)
+            fetchTopPosts(Constants.DEFAULT_TIME_PERIOD, Constants.DEFAULT_POST_LIMIT)
         }
-
-
     }
 
     private fun fetchTopPosts(timePeriod: String, limit: Int) {
-        redditApi.getTopPosts(timePeriod, limit, after).enqueue(object : Callback<RedditResponse> {
-            override fun onResponse(call: Call<RedditResponse>, response: Response<RedditResponse>) {
-                if (response.isSuccessful) {
-                    val redditResponse = response.body()
-                    if (redditResponse != null) {
-                        after = redditResponse.data.after
-
-                        val newPosts = redditResponse.data.children
-                        postAdapter.addPosts(newPosts)
-                        loading = false
-                    }
-                } else {
-                    Log.e("MainActivity", "Request failed")
-                }
+        postRepository.fetchTopPosts(timePeriod, limit, after) { newPosts, nextAfter ->
+            runOnUiThread {
+                postAdapter.addPosts(newPosts)
+                after = nextAfter
+                loading = false
             }
-            override fun onFailure(call: Call<RedditResponse>, t: Throwable) {
-                Log.e("MainActivity", "Error: ${t.message}")
-            }
-        })
+        }
     }
 
     private fun setupRecyclerViewScrollListener() {
@@ -90,7 +73,7 @@ class MainActivity : AppCompatActivity() {
 
                 if (!loading && dy > 0 && (firstVisibleItemPosition + visibleItemCount) >= totalItemCount) {
                     loading = true
-                    fetchTopPosts("all", 2)
+                    fetchTopPosts(Constants.DEFAULT_TIME_PERIOD, Constants.DEFAULT_POST_LIMIT)
                 }
             }
         })
